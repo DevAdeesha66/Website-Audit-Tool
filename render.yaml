@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: website-audit-tool
+    runtime: python
+    pythonVersion: "3.11.6"
+    buildCommand: |
+      pip install -r requirements.txt
+      playwright install chromium
+      playwright install-deps
+    startCommand: uvicorn api.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: OPENROUTER_API_KEY
+        sync: false

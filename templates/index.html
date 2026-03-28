@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Website Audit Tool</title>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0a0a0f;
+            --bg-card: #12121a;
+            --bg-card-hover: #181824;
+            --bg-elevated: #1a1a28;
+            --bg-input: #0e0e16;
+            --border: #1e1e2e;
+            --border-hover: #2d2d44;
+            --text-primary: #e8e8f0;
+            --text-secondary: #8888a8;
+            --text-muted: #55556a;
+            --accent: #6366f1;
+            --accent-hover: #818cf8;
+            --accent-glow: rgba(99, 102, 241, 0.15);
+            --accent-glow-strong: rgba(99, 102, 241, 0.25);
+            --green: #22c55e;
+            --green-bg: rgba(34, 197, 94, 0.08);
+            --green-border: rgba(34, 197, 94, 0.2);
+            --yellow: #eab308;
+            --yellow-bg: rgba(234, 179, 8, 0.08);
+            --yellow-border: rgba(234, 179, 8, 0.2);
+            --red: #ef4444;
+            --red-bg: rgba(239, 68, 68, 0.08);
+            --red-border: rgba(239, 68, 68, 0.2);
+            --mono: 'JetBrains Mono', monospace;
+            --sans: 'Outfit', sans-serif;
+        }
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: var(--sans);
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            min-height: 100vh;
+            -webkit-font-smoothing: antialiased;
+        }
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image:
+                linear-gradient(rgba(99, 102, 241, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(99, 102, 241, 0.03) 1px, transparent 1px);
+            background-size: 60px 60px;
+            pointer-events: none;
+            z-index: 0;
+        }
+        .container { max-width: 960px; margin: 0 auto; padding: 3rem 1.5rem; position: relative; z-index: 1; }
+        .header { text-align: center; margin-bottom: 3rem; position: relative; }
+        .header::before {
+            content: '';
+            position: absolute;
+            top: -60px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 300px;
+            height: 300px;
+            background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%);
+            pointer-events: none;
+        }
+        .header .badge {
+            display: inline-block;
+            font-family: var(--mono);
+            font-size: 0.7rem;
+            font-weight: 500;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: var(--accent);
+            border: 1px solid var(--border);
+            padding: 0.35rem 1rem;
+            border-radius: 100px;
+            margin-bottom: 1.25rem;
+            background: var(--accent-glow);
+        }
+        .header h1 {
+            font-size: 2.75rem;
+            font-weight: 800;
+            letter-spacing: -1.5px;
+            margin-bottom: 0.6rem;
+            background: linear-gradient(135deg, #e8e8f0 0%, #a5a5c0 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .header p { color: var(--text-secondary); font-size: 1.05rem; font-weight: 300; }
+        .input-section {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            transition: border-color 0.3s;
+        }
+        .input-section:focus-within {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent-glow);
+        }
+        .input-row { display: flex; gap: 0.75rem; }
+        .input-row input {
+            flex: 1; padding: 0.9rem 1.25rem; background: var(--bg-input);
+            border: 1px solid var(--border); border-radius: 10px; font-size: 0.95rem;
+            font-family: var(--mono); color: var(--text-primary); outline: none;
+            transition: border-color 0.2s;
+        }
+        .input-row input::placeholder { color: var(--text-muted); }
+        .input-row input:focus { border-color: var(--accent); }
+        .btn-analyze {
+            padding: 0.9rem 2.25rem; background: var(--accent); color: #fff; border: none;
+            border-radius: 10px; font-size: 0.95rem; font-weight: 600; font-family: var(--sans);
+            cursor: pointer; transition: all 0.2s; white-space: nowrap; letter-spacing: 0.3px;
+        }
+        .btn-analyze:hover {
+            background: var(--accent-hover);
+            box-shadow: 0 4px 20px var(--accent-glow-strong);
+            transform: translateY(-1px);
+        }
+        .btn-analyze:disabled { background: var(--border); color: var(--text-muted); cursor: not-allowed; transform: none; box-shadow: none; }
+        .loading { display: none; text-align: center; padding: 4rem 1rem; }
+        .loading.active { display: block; }
+        .spinner {
+            width: 44px; height: 44px; border: 2.5px solid var(--border);
+            border-top-color: var(--accent); border-radius: 50%;
+            animation: spin 0.8s linear infinite; margin: 0 auto 1.25rem;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .loading p { color: var(--text-secondary); font-weight: 300; }
+        .loading .sub { font-size: 0.8rem; color: var(--text-muted); margin-top: 0.4rem; }
+        .error-box {
+            display: none; background: var(--red-bg); border: 1px solid var(--red-border);
+            border-radius: 12px; padding: 1.25rem 1.5rem; margin-bottom: 2rem;
+            color: var(--red); font-size: 0.9rem; font-family: var(--mono);
+        }
+        .error-box.active { display: block; }
+        .results { display: none; }
+        .results.active { display: block; }
+        .section {
+            background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px;
+            padding: 1.75rem; margin-bottom: 1.25rem; transition: border-color 0.3s;
+            animation: fadeUp 0.4s ease-out both;
+        }
+        .section:nth-child(1) { animation-delay: 0s; }
+        .section:nth-child(2) { animation-delay: 0.08s; }
+        .section:nth-child(3) { animation-delay: 0.16s; }
+        .section:nth-child(4) { animation-delay: 0.24s; }
+        .section:nth-child(5) { animation-delay: 0.32s; }
+        @keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+        .section:hover { border-color: var(--border-hover); }
+        .section h2 {
+            font-size: 0.75rem; font-weight: 600; text-transform: uppercase;
+            letter-spacing: 1.5px; color: var(--text-muted); margin-bottom: 1.25rem;
+        }
+        .metrics-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; }
+        @media (max-width: 640px) { .metrics-grid { grid-template-columns: repeat(2, 1fr); } }
+        .metric-card {
+            background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 12px;
+            padding: 1.1rem; text-align: center; transition: all 0.25s;
+        }
+        .metric-card:hover { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); transform: translateY(-2px); }
+        .metric-card .value { font-size: 1.8rem; font-weight: 700; color: var(--text-primary); font-family: var(--mono); letter-spacing: -1px; }
+        .metric-card .label { font-size: 0.75rem; color: var(--text-muted); margin-top: 0.3rem; text-transform: uppercase; letter-spacing: 0.8px; font-weight: 500; }
+        .meta-item { padding: 1rem 0; border-bottom: 1px solid var(--border); }
+        .meta-item:last-child { border-bottom: none; }
+        .meta-item .meta-label { font-size: 0.7rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 0.35rem; }
+        .meta-item .meta-value { font-size: 0.92rem; color: var(--text-secondary); word-break: break-word; }
+        .meta-missing { color: var(--red); font-style: italic; }
+        .insight-block {
+            border-left: 2px solid var(--accent); padding: 1rem 1.25rem; margin-bottom: 0.75rem;
+            background: var(--bg-elevated); border-radius: 0 12px 12px 0; transition: background 0.2s;
+        }
+        .insight-block:hover { background: var(--bg-card-hover); }
+        .insight-block h3 { font-size: 0.95rem; font-weight: 600; display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.6rem; color: var(--text-primary); }
+        .score-badge { font-family: var(--mono); font-size: 0.6rem; font-weight: 700; padding: 0.2rem 0.6rem; border-radius: 6px; text-transform: uppercase; letter-spacing: 0.8px; }
+        .score-good { background: var(--green-bg); color: var(--green); border: 1px solid var(--green-border); }
+        .score-needs_work { background: var(--yellow-bg); color: var(--yellow); border: 1px solid var(--yellow-border); }
+        .score-poor { background: var(--red-bg); color: var(--red); border: 1px solid var(--red-border); }
+        .insight-block ul { list-style: none; padding: 0; }
+        .insight-block li { padding: 0.35rem 0; font-size: 0.88rem; color: var(--text-secondary); padding-left: 1.25rem; position: relative; font-weight: 300; line-height: 1.6; }
+        .insight-block li::before { content: ''; position: absolute; left: 0; top: 0.75rem; width: 5px; height: 5px; border-radius: 50%; background: var(--accent); }
+        .rec-card { border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem; margin-bottom: 0.75rem; transition: all 0.25s; background: var(--bg-elevated); }
+        .rec-card:hover { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); transform: translateY(-1px); }
+        .rec-header { display: flex; align-items: center; gap: 0.85rem; margin-bottom: 0.6rem; }
+        .rec-priority { width: 30px; height: 30px; background: var(--accent); color: #fff; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 700; font-family: var(--mono); flex-shrink: 0; }
+        .rec-title { font-weight: 600; font-size: 0.95rem; color: var(--text-primary); }
+        .rec-desc { font-size: 0.88rem; color: var(--text-secondary); margin-bottom: 0.5rem; padding-left: 2.9rem; font-weight: 300; line-height: 1.6; }
+        .rec-metric { font-family: var(--mono); font-size: 0.72rem; color: var(--text-muted); padding-left: 2.9rem; }
+        .prompt-toggle {
+            display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1.2rem;
+            background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 8px;
+            cursor: pointer; font-size: 0.85rem; font-weight: 500; color: var(--text-secondary);
+            transition: all 0.2s; margin-bottom: 1rem; font-family: var(--sans);
+        }
+        .prompt-toggle:hover { border-color: var(--accent); color: var(--accent); }
+        .prompt-toggle .arrow { font-size: 0.7rem; transition: transform 0.2s; }
+        .prompt-toggle.open .arrow { transform: rotate(90deg); }
+        .prompt-logs-content { display: none; }
+        .prompt-logs-content.active { display: block; }
+        .prompt-block { margin-bottom: 1.25rem; }
+        .prompt-block h3 { font-size: 0.8rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem; }
+        .prompt-label { font-family: var(--mono); font-size: 0.6rem; font-weight: 700; padding: 0.15rem 0.5rem; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.8px; }
+        .label-system { background: rgba(99, 102, 241, 0.12); color: var(--accent); border: 1px solid rgba(99, 102, 241, 0.2); }
+        .label-user { background: var(--green-bg); color: var(--green); border: 1px solid var(--green-border); }
+        .label-output { background: rgba(168, 85, 247, 0.1); color: #a855f7; border: 1px solid rgba(168, 85, 247, 0.2); }
+        .prompt-block pre {
+            background: #08080d; color: #b0b0cc; padding: 1.25rem; border-radius: 12px;
+            border: 1px solid var(--border); font-family: var(--mono); font-size: 0.75rem;
+            line-height: 1.7; overflow-x: auto; white-space: pre-wrap; word-break: break-word;
+            max-height: 400px; overflow-y: auto;
+        }
+        .prompt-block pre::-webkit-scrollbar { width: 6px; }
+        .prompt-block pre::-webkit-scrollbar-track { background: transparent; }
+        .prompt-block pre::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+        .footer { text-align: center; color: var(--text-muted); font-size: 0.75rem; margin-top: 3rem; padding: 1.5rem; font-family: var(--mono); letter-spacing: 0.5px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="badge">AI-Powered Analysis</div>
+            <h1>Website Audit Tool</h1>
+            <p>Extract factual metrics and generate structured insights from any webpage</p>
+        </div>
+        <div class="input-section">
+            <div class="input-row">
+                <input type="text" id="urlInput" placeholder="https://example.com" />
+                <button class="btn-analyze" id="analyzeBtn" onclick="runAudit()">Analyze</button>
+            </div>
+        </div>
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>Scraping page and running AI analysis</p>
+            <p class="sub">This usually takes 10-20 seconds</p>
+        </div>
+        <div class="error-box" id="errorBox"></div>
+        <div class="results" id="results">
+            <div class="section">
+                <h2>Factual Metrics</h2>
+                <div class="metrics-grid" id="metricsGrid"></div>
+            </div>
+            <div class="section">
+                <h2>Meta Information</h2>
+                <div id="metaInfo"></div>
+            </div>
+            <div class="section">
+                <h2>AI Analysis</h2>
+                <div id="aiInsights"></div>
+            </div>
+            <div class="section">
+                <h2>Prioritized Recommendations</h2>
+                <div id="recommendations"></div>
+            </div>
+            <div class="section">
+                <h2>Prompt Logs / Reasoning Traces</h2>
+                <div class="prompt-toggle" id="promptToggle" onclick="togglePromptLogs()">
+                    <span class="arrow">&#9654;</span> Show prompt logs
+                </div>
+                <div class="prompt-logs-content" id="promptLogsContent">
+                    <div class="prompt-block">
+                        <h3><span class="prompt-label label-system">SYS</span> System prompt</h3>
+                        <pre id="systemPrompt"></pre>
+                    </div>
+                    <div class="prompt-block">
+                        <h3><span class="prompt-label label-user">USR</span> Constructed user prompt</h3>
+                        <pre id="userPrompt"></pre>
+                    </div>
+                    <div class="prompt-block">
+                        <h3><span class="prompt-label label-output">OUT</span> Raw model output</h3>
+                        <pre id="rawOutput"></pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="footer">Built for EIGHT25MEDIA &middot; AI-Native Software Engineer Assessment</div>
+    </div>
+    <script>
+        document.getElementById('urlInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') runAudit();
+        });
+        function togglePromptLogs() {
+            var content = document.getElementById('promptLogsContent');
+            var toggle = document.getElementById('promptToggle');
+            var isActive = content.classList.toggle('active');
+            toggle.classList.toggle('open', isActive);
+            toggle.innerHTML = isActive ? '<span class="arrow">&#9654;</span> Hide prompt logs' : '<span class="arrow">&#9654;</span> Show prompt logs';
+        }
+        async function runAudit() {
+            var url = document.getElementById('urlInput').value.trim();
+            if (!url) return alert('Please enter a URL');
+            var btn = document.getElementById('analyzeBtn');
+            btn.disabled = true;
+            btn.textContent = 'Analyzing...';
+            document.getElementById('loading').classList.add('active');
+            document.getElementById('results').classList.remove('active');
+            document.getElementById('errorBox').classList.remove('active');
+            document.getElementById('promptLogsContent').classList.remove('active');
+            var toggle = document.getElementById('promptToggle');
+            toggle.classList.remove('open');
+            toggle.innerHTML = '<span class="arrow">&#9654;</span> Show prompt logs';
+            try {
+                var response = await fetch('/analyze', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url: url }),
+                });
+                if (!response.ok) {
+                    var err = await response.json();
+                    throw new Error(err.detail || 'Analysis failed');
+                }
+                var data = await response.json();
+                renderResults(data);
+            } catch (error) {
+                var errorBox = document.getElementById('errorBox');
+                errorBox.textContent = error.message;
+                errorBox.classList.add('active');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Analyze';
+                document.getElementById('loading').classList.remove('active');
+            }
+        }
+        function renderResults(data) {
+            var m = data.metrics;
+            var ai = data.ai_insights;
+            function mc(val, label) { return '<div class="metric-card"><div class="value">' + val + '</div><div class="label">' + label + '</div></div>'; }
+            document.getElementById('metricsGrid').innerHTML =
+                mc(m.word_count.toLocaleString(), 'Words') + mc(m.heading_counts.h1, 'H1 Tags') +
+                mc(m.heading_counts.h2, 'H2 Tags') + mc(m.heading_counts.h3, 'H3 Tags') +
+                mc(m.cta_count, 'CTAs') + mc(m.internal_links, 'Internal Links') +
+                mc(m.external_links, 'External Links') + mc(m.total_images, 'Images') +
+                mc(m.images_missing_alt_pct + '%', 'Missing Alt');
+            document.getElementById('metaInfo').innerHTML =
+                '<div class="meta-item"><div class="meta-label">Meta Title</div><div class="meta-value ' + (!m.meta_title ? 'meta-missing' : '') + '">' + (m.meta_title || 'Missing - this hurts SEO') + '</div></div>' +
+                '<div class="meta-item"><div class="meta-label">Meta Description</div><div class="meta-value ' + (!m.meta_description ? 'meta-missing' : '') + '">' + (m.meta_description || 'Missing - no search snippet') + '</div></div>';
+            var keys = [{key:'seo_analysis',label:'SEO Structure'},{key:'messaging_clarity',label:'Messaging Clarity'},{key:'cta_analysis',label:'CTA Usage'},{key:'content_depth',label:'Content Depth'},{key:'ux_concerns',label:'UX Concerns'}];
+            var ih = '';
+            for (var i = 0; i < keys.length; i++) {
+                var s = ai[keys[i].key]; if (!s) continue;
+                var sc = s.score || 'needs_work';
+                var fh = '';
+                var f = s.findings || [];
+                for (var j = 0; j < f.length; j++) fh += '<li>' + escapeHtml(f[j]) + '</li>';
+                ih += '<div class="insight-block"><h3>' + keys[i].label + ' <span class="score-badge score-' + sc + '">' + sc.replace('_',' ') + '</span></h3><ul>' + fh + '</ul></div>';
+            }
+            document.getElementById('aiInsights').innerHTML = ih;
+            var recs = ai.recommendations || [];
+            var rh = '';
+            for (var k = 0; k < recs.length; k++) {
+                var r = recs[k];
+                rh += '<div class="rec-card"><div class="rec-header"><div class="rec-priority">' + r.priority + '</div><div class="rec-title">' + escapeHtml(r.title) + '</div></div><div class="rec-desc">' + escapeHtml(r.description) + '</div><div class="rec-metric">Based on: ' + escapeHtml(r.metric_reference) + '</div></div>';
+            }
+            document.getElementById('recommendations').innerHTML = rh;
+            if (data.prompt_trace) {
+                document.getElementById('systemPrompt').textContent = data.prompt_trace.system_prompt;
+                document.getElementById('userPrompt').textContent = data.prompt_trace.user_prompt;
+                document.getElementById('rawOutput').textContent = data.prompt_trace.raw_model_output;
+            }
+            document.getElementById('results').classList.add('active');
+        }
+        function escapeHtml(t) { var d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
+    </script>
+</body>
+</html>
